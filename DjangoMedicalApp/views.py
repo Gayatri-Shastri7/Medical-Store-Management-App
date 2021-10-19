@@ -200,10 +200,7 @@ class MedicineViewSet(viewsets.ViewSet):
                 print("UPDATE")
 
         return Response({"error":False,"message":"Data Has Been Updated"})
-
-
-
-    
+ 
 company_list=CompanyViewSet.as_view({"get":"list"})
 company_creat=CompanyViewSet.as_view({"post":"create"})
 company_update=CompanyViewSet.as_view({"put":"update"})
