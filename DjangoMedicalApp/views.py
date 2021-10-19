@@ -9,7 +9,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from DjangoMedicalApp.models import Company, CompanyBank, Medicine, MedicalDetails, CompanyAccount, Employee, \
     EmployeeBank, EmployeeSalary, CustomerRequest, Bill, BillDetails
-    
+
 from DjangoMedicalApp.serializers import CompanySerliazer, CompanyBankSerializer, MedicineSerliazer, \
     MedicalDetailsSerializer, MedicalDetailsSerializerSimple, CompanyAccountSerializer, EmployeeSerializer, \
     EmployeeBankSerializer, EmployeeSalarySerializer, CustomerSerializer, BillSerializer, BillDetailsSerializer, \
@@ -61,6 +61,40 @@ class CompanyViewSet(viewsets.ViewSet):
             dict_response={"error":True,"message":"Error During Updating Company Data"}
 
         return Response(dict_response)
+        
+class CompanyBankViewset(viewsets.ViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    def create(self,request):
+        try:
+            serializer=CompanyBankSerializer(data=request.data,context={"request":request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            dict_response={"error":False,"message":"Company Bank Data Save Successfully"}
+        except:
+            dict_response={"error":True,"message":"Error During Saving Company Bank Data"}
+        return Response(dict_response)
+
+    def list(self,request):
+        companybank=CompanyBank.objects.all()
+        serializer=CompanyBankSerializer(companybank,many=True,context={"request":request})
+        response_dict={"error":False,"message":"All Company Bank List Data","data":serializer.data}
+        return Response(response_dict)
+
+    def retrieve(self,request,pk=None):
+        queryset=CompanyBank.objects.all()
+        companybank=get_object_or_404(queryset,pk=pk)
+        serializer=CompanyBankSerializer(companybank,context={"request":request})
+        return Response({"error":False,"message":"Single Data Fetch","data":serializer.data})
+
+    def update(self,request,pk=None):
+        queryset=CompanyBank.objects.all()
+        companybank=get_object_or_404(queryset,pk=pk)
+        serializer=CompanyBankSerializer(companybank,data=request.data,context={"request":request})
+        serializer.is_valid()
+        serializer.save()
+        return Response({"error":False,"message":"Data Has Been Updated"})
+
     
 company_list=CompanyViewSet.as_view({"get":"list"})
 company_creat=CompanyViewSet.as_view({"post":"create"})
