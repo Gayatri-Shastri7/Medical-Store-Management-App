@@ -61,7 +61,7 @@ class CompanyViewSet(viewsets.ViewSet):
             dict_response={"error":True,"message":"Error During Updating Company Data"}
 
         return Response(dict_response)
-        
+
 class CompanyBankViewset(viewsets.ViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -94,6 +94,114 @@ class CompanyBankViewset(viewsets.ViewSet):
         serializer.is_valid()
         serializer.save()
         return Response({"error":False,"message":"Data Has Been Updated"})
+
+class CompanyNameViewSet(generics.ListAPIView):
+    serializer_class = CompanySerliazer
+    def get_queryset(self):
+        name=self.kwargs["name"]
+        return Company.objects.filter(name=name)
+
+class MedicineByNameViewSet(generics.ListAPIView):
+    serializer_class = MedicineSerliazer
+    def get_queryset(self):
+        name=self.kwargs["name"]
+        return Medicine.objects.filter(name__contains=name)
+
+class CompanyOnlyViewSet(generics.ListAPIView):
+    serializer_class = CompanySerliazer
+    def get_queryset(self):
+        return Company.objects.all()
+
+class MedicineViewSet(viewsets.ViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    def create(self,request):
+        try:
+            serializer=MedicineSerliazer(data=request.data,context={"request":request})
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            medicine_id=serializer.data['id']
+            #Access The Serializer Id Which JUSt SAVE in OUR DATABASE TABLE
+            #print(medicine_id)
+
+            #Adding and Saving Id into Medicine Details Table
+            medicine_details_list=[]
+            for medicine_detail in request.data["medicine_details"]:
+                print(medicine_detail)
+                #Adding medicine id which will work for medicine details serializer
+                medicine_detail["medicine_id"]=medicine_id
+                medicine_details_list.append(medicine_detail)
+                print(medicine_detail)
+
+            serializer2=MedicalDetailsSerializer(data=medicine_details_list,many=True,context={"request":request})
+            serializer2.is_valid()
+            serializer2.save()
+
+            dict_response={"error":False,"message":"Medicine Data Save Successfully"}
+        except:
+            dict_response={"error":True,"message":"Error During Saving Medicine Data"}
+        return Response(dict_response)
+
+    def list(self,request):
+        medicine=Medicine.objects.all()
+        serializer=MedicineSerliazer(medicine,many=True,context={"request":request})
+
+        medicine_data=serializer.data
+        newmedicinelist=[]
+
+        #Adding Extra Key for Medicine Details in Medicine
+        for medicine in medicine_data:
+            #Accessing All the Medicine Details of Current Medicine ID
+            medicine_details=MedicalDetails.objects.filter(medicine_id=medicine["id"])
+            medicine_details_serializers=MedicalDetailsSerializerSimple(medicine_details,many=True)
+            medicine["medicine_details"]=medicine_details_serializers.data
+            newmedicinelist.append(medicine)
+
+        response_dict={"error":False,"message":"All Medicine List Data","data":newmedicinelist}
+        return Response(response_dict)
+
+    def retrieve(self,request,pk=None):
+        queryset=Medicine.objects.all()
+        medicine=get_object_or_404(queryset,pk=pk)
+        serializer=MedicineSerliazer(medicine,context={"request":request})
+
+        serializer_data=serializer.data
+        # Accessing All the Medicine Details of Current Medicine ID
+        medicine_details = MedicalDetails.objects.filter(medicine_id=serializer_data["id"])
+        medicine_details_serializers = MedicalDetailsSerializerSimple(medicine_details, many=True)
+        serializer_data["medicine_details"] = medicine_details_serializers.data
+
+        return Response({"error":False,"message":"Single Data Fetch","data":serializer_data})
+
+    def update(self,request,pk=None):
+        queryset=Medicine.objects.all()
+        medicine=get_object_or_404(queryset,pk=pk)
+        serializer=MedicineSerliazer(medicine,data=request.data,context={"request":request})
+        serializer.is_valid()
+        serializer.save()
+        #print(request.data["medicine_details"])
+        for salt_detail in request.data["medicine_details"]:
+            if salt_detail["id"]==0:
+                #For Insert New Salt Details
+                del salt_detail["id"]
+                salt_detail["medicine_id"]=serializer.data["id"]
+                serializer2 = MedicalDetailsSerializer(data=salt_detail,context={"request": request})
+                serializer2.is_valid()
+                serializer2.save()
+            else:
+                #For Update Salt Details
+                queryset2=MedicalDetails.objects.all()
+                medicine_salt=get_object_or_404(queryset2,pk=salt_detail["id"])
+                del salt_detail["id"]
+                serializer3=MedicalDetailsSerializer(medicine_salt,data=salt_detail,context={"request":request})
+                serializer3.is_valid()
+                serializer3.save()
+                print("UPDATE")
+
+        return Response({"error":False,"message":"Data Has Been Updated"})
+
+
 
     
 company_list=CompanyViewSet.as_view({"get":"list"})
